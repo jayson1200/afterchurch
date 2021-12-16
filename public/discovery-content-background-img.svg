@@ -1,0 +1,24 @@
+ <svg
+xmlns="http://www.w3.org/2000/svg"
+width="100%"
+height="243"
+viewBox="0 0 1806 243"
+preserveAspectRatio="none"
+>
+    <g
+    id="chat-info-container"
+    fill="#0b0b15"
+    stroke="rgba(112,112,112,0)"
+    stroke-width="1"
+    >
+        <rect width="1806" height="243" rx="45" stroke="none" />
+        <rect
+            x="0.5"
+            y="0.5"
+            width="1805"
+            height="242"
+            rx="44.5"
+            fill="none"
+        />
+    </g>
+</svg>

@@ -1,0 +1,35 @@
+html {
+  background-color: #2d2c3c;
+}
+
+.action-area {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+}
+.user-roles,
+.action-buttons,
+.transcript {
+  display: flex;
+  flex-direction: column;
+}
+
+.share-btn,
+.leave-btn,
+.ask-btn {
+  display: flex;
+  align-self: center;
+}
+
+.after-church-svg-logo {
+  margin-bottom: 1.45%;
+}
+
+.action-buttons {
+  margin-left: 1%;
+  margin-right: 1%;
+}
+
+.audience-box-svg {
+  margin-top: 10px;
+}
