@@ -26,6 +26,7 @@ document.querySelector("#check-btn").onclick = function () {
 };
 
 function go_to_next_page() {
+  console.log("running");
   window.location.href = "discovery.html";
 }
 

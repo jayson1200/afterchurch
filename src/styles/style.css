@@ -1,0 +1,76 @@
+html {
+  background-color: #2d2c3c;
+}
+
+.info-box {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  margin-top: 10%;
+}
+
+.textboxes {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.first-name {
+  margin-bottom: 5%;
+}
+
+.last-name {
+  margin-bottom: 5%;
+}
+
+.pic-check {
+  display: flex;
+  flex-direction: column;
+  margin-left: 5%;
+}
+.check {
+  display: flex;
+  justify-content: center;
+}
+
+#last-name-textbox,
+#admin-password-textbox,
+#first-name-textbox {
+  position: absolute;
+  z-index: 2;
+  font-size: 25px;
+  width: 345px;
+  height: 57.5px;
+  font-family: ArialRoundedMTBold, Arial Rounded MT;
+  font-weight: bold;
+  color: #7477a0;
+  border: none;
+  padding: 0px;
+  margin: 0px;
+  background-color: transparent;
+  padding-left: 1.45%;
+}
+
+input:focus {
+  outline: none;
+}
+
+#check-btn,
+#add-pic-btn {
+  background-color: transparent;
+  border: none;
+  padding: 0px;
+  margin: 0px;
+}
+
+.add-pic-input {
+  position: absolute;
+  width: 134px;
+  height: 134px;
+  border: none;
+  padding: 0px;
+  margin: 0px;
+  background-color: transparent;
+  opacity: 0;
+  overflow: hidden;
+}
