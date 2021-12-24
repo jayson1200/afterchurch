@@ -7,9 +7,9 @@ module.exports = (env, args) => {
 
   return {
     entry: {
-      entry: "./index.js",
-      discovery: "./discovery.js",
-      chat_room: "./chat_room.js",
+      entry: "/src/index.js",
+      discovery: "/src/discovery.js",
+      chat_room: "/src/chat_room.js",
     },
     output: {
       path: path.resolve(__dirname, "dist"),
@@ -17,19 +17,19 @@ module.exports = (env, args) => {
     },
     plugins: [
       new HtmlWebpackPlugin({
-        template: "index.html",
+        template: "src/index.html",
         chunks: ["entry"],
       }),
       new HtmlWebpackPlugin({
         title: "discovery",
         filename: "discovery.html",
-        template: "./discovery.html",
+        template: "src/discovery.html",
         chunks: ["discovery"],
       }),
       new HtmlWebpackPlugin({
         title: "chat_room",
         filename: "chat-room.html",
-        template: "./chat-room.html",
+        template: "src/chat-room.html",
         chunks: ["chat_room"],
       }),
       new webpack.ProvidePlugin({
@@ -37,5 +37,13 @@ module.exports = (env, args) => {
         TextEncoder: ["text-encoding", "TextEncoder"],
       }),
     ],
+    module: {
+      rules: [
+        {
+          test: /\.css$/,
+          use: ["style-loader", "css-loader"],
+        },
+      ],
+    },
   };
 };

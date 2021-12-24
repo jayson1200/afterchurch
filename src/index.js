@@ -1,5 +1,10 @@
+/*Importing these files won work without webpack because the browser doesn't 
+actually know where thye are unless you would like to find it in the node modules.
+ Webpack solves this problem*/
+
 import firebase from "firebase/app";
 import "firebase/firestore";
+import "./styles/style.css";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAEsNo8T2XQjf0o1z4zoXmz4F0wrBSImSc",
