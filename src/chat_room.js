@@ -120,6 +120,9 @@ function waitInQuene() {
 async function preformSignaling() {
   let users = await negDoc.collection("users").get();
 
+  //Eventually I want to allow the moderator/creating speaker to commence signalling to help cut down on reads and writes
+
+  //Adds an offer to all unadded users
   for (let userDoc of users.docs) {
     if (isNotAlreadyConnected(userDoc.id)) {
       let newPeerConnection = new UserConnection(servers, userDoc.id);
@@ -148,20 +151,40 @@ async function preformSignaling() {
       }
     }
   }
-
+  //Adds a listener to a user's offercandidate doc then set the remote description to what appears in the document
   let unsubscribeFromOffer = negDoc
     .collection("users")
     .doc(sessionStorage.getItem("userID"))
     .collection("offer-candidates")
-    .onSnapshot((doc) => {
+    .onSnapshot(async (doc) => {
       newPeerConnection.userPeerConnection.setRemoteDescription(
         doc.data()["offer"]["offer"]
       );
+
+      let connAnswerDescription =
+        await newPeerConnection.userPeerConnection.createAnswer();
+
+      await newPeerConnection.userPeerConnection.setLocalDescription(
+        connAnswerDescription
+      );
+
+      await negDoc
+        .collection("users")
+        .doc(sessionStorage.getItem("userID"))
+        .collection("answer-candidates")
+        .add({
+          answer: JSON.stringify(
+            newPeerConnection.userPeerConnection.localDescription
+          ),
+        });
+
       unsubscribeFromOffer();
     });
 
   peerConnections.push(newPeerConnection);
 }
+
+async function postReturnAnswer() {}
 
 function isNotAlreadyConnected(userID) {
   for (let i = 0; i < peerConnections.length; i++) {
@@ -206,6 +229,7 @@ class UserConnection {
     this.userPeerConnection = new RTCPeerConnection(servers);
     this.remoteStream = new MediaStream();
     this.remoteUserID = remoteUserID;
+    this.userIsConnected = false;
 
     //Here we add our track to the remoteStream from our peer connection
     // this.userPeerConnection.ontrack = (event) => {
@@ -214,14 +238,6 @@ class UserConnection {
     //   });
     // };
   }
-
-  // setLocalDescription(desc) {
-  //   this.userPeerConnection.setLocalDescription(desc);
-  // }
-
-  // setOnIceCandidate(onIceFunc) {
-  //   this.userPeerConnection.onicecandidate = onIceFunc;
-  // }
 
   getRemoteUserID() {
     return this.remoteUserID;
