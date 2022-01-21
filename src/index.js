@@ -30,11 +30,13 @@ document.querySelector("#check-btn").onclick = function () {
   store_credentials(go_to_next_page);
 };
 
+//Goes to the discovery page 
 function go_to_next_page() {
   console.log("running");
   window.location.href = "discovery.html";
 }
 
+//Stores the admin-password, first-name, the user's picture, whether the user isAdmin, and last-name in session storage
 function store_credentials(func_to_run_after) {
   let docRef = db.collection("admin-password").doc("password-1");
 
@@ -70,6 +72,7 @@ function store_credentials(func_to_run_after) {
   });
 }
 
+//Gets the picture the user added via the addpic button
 function get_pic_data_url() {
   const reader = new FileReader();
 
@@ -78,6 +81,7 @@ function get_pic_data_url() {
   return reader;
 }
 
+//Generates the userID for the current user
 function generate_random_auth_code() {
   let lower_case_lets = "abcdefghijklmnopqrstuvwxyz";
   let upper_case_lets = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
@@ -104,7 +108,7 @@ function generate_random_auth_code() {
 
   return code;
 }
-
+//Generates a random number between a min and max (inclusive)
 function get_rand_int(min, max) {
   min = Math.ceil(min);
   max = Math.floor(max);
