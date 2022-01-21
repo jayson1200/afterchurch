@@ -25,6 +25,7 @@ let db = firebase.firestore();
 let addEventBTN = document.querySelector(".add-event");
 let deleteEventBTN = document.querySelector(".delete-event");
 
+//Checks to see if the user isAdmin. If not, it removes the admin feature buttom from the DOM
 if (sessionStorage.getItem("is-admin") == "false") {
   addEventBTN.remove();
   deleteEventBTN.remove();
@@ -42,9 +43,11 @@ deleteEventBTN.onclick = function () {
 
 updateRoomsUI();
 
+
 function updateRoomsUI() {
   let indexToRoomID = 0;
 
+  //Gets the audio rooms from the firestore and creates the room buttons
   db.collection("audio-rooms")
     .doc("rooms")
     .get()
@@ -65,6 +68,7 @@ function updateRoomsUI() {
     });
 }
 
+//Represents an audio room display button that get appended to the DOM
 class ContentItem {
   constructor(roomName, datetime, roomID) {
     this.roomName = roomName;
