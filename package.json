@@ -1,7 +1,8 @@
 {
   "scripts": {
     "build": "webpack --mode development",
-    "dev": "webpack-dev-server --port 8080 --open"
+    "dev": "webpack-dev-server --mode development --port 8080",
+    "production": "webpack --mode production"
   },
   "devDependencies": {
     "css-loader": "^6.5.1",

@@ -97,6 +97,7 @@ function removeUserFromQuene() {
   });
 }
 
+//Prefroms the action of waiting until it is this user's turn to connect to the other users
 function waitInQuene() {
   return new Promise((resolve, reject) => {
     let frontOfLine = false;
@@ -105,19 +106,20 @@ function waitInQuene() {
       if (doc.data()["quene"]["0"] == sessionStorage.getItem("userID")) {
         frontOfLine = true;
         unsubscribe();
+        resolve(true);
       }
     });
 
-    let checkIfFront = window.setInterval(() => {
-      if (frontOfLine) {
-        clearInterval(checkIfFront);
-        resolve(true);
-      }
-    }, 500);
+    // let checkIfFront = window.setInterval(() => {
+    //   if (frontOfLine) {
+    //     clearInterval(checkIfFront);
+    //     resolve(true);
+    //   }
+    // }, 500);
   });
 }
 
-async function preformSignaling() {
+async function runSignaling() {
   let users = await negDoc.collection("users").get();
 
   //Eventually I want to allow the moderator/creating speaker to commence signalling to help cut down on reads and writes
@@ -147,44 +149,77 @@ async function preformSignaling() {
             offer: JSON.stringify(
               newPeerConnection.userPeerConnection.localDescription
             ),
+            senderID: sessionStorage.getItem("userID"),
           });
       }
+
+      //Get answer asynchronously from the user I just sent an offer
+
+      /*add an onSnapshot listener to the answerCandidates collection of each user
+        This said, we shouldn't move on to the next step until this is finished
+      */
+      // let unsubscribeFromAnswer = negDoc
+      //   .collection("users")
+      //   .doc(userDoc.id)
+      //   .collection("answer-candidates")
+      //   .onSnapshot(() => {
+      //     for (let i = 0; i < peerConnections.length; i++){
+      //       //user.id could be pointing to the wrong thing or could be a memory leak
+      //       if (peerConnections[i].getRemoteUserID() == userDoc.id) {
+      //         peerConnections[i].userPeerConnection.setRemoteDescription()
+      //       }
+      //     }
+      //   });
     }
   }
-  //Adds a listener to a user's offercandidate doc then set the remote description to what appears in the document
-  let unsubscribeFromOffer = negDoc
+}
+
+//Adds a listener to the user's offercandidate doc then sets the remote description to what appears in the document
+let unsubscribeFromOffer = negDoc
+  .collection("users")
+  .doc(sessionStorage.getItem("userID"))
+  .collection("offer-candidates")
+  .onSnapshot(() => {
+    //Problem here: Can't run async function from function that isnt asynchronous
+    postReturnAnswer();
+  });
+
+async function postReturnAnswer() {
+  let doc = await negDoc
     .collection("users")
     .doc(sessionStorage.getItem("userID"))
     .collection("offer-candidates")
-    .onSnapshot(async (doc) => {
-      newPeerConnection.userPeerConnection.setRemoteDescription(
-        doc.data()["offer"]["offer"]
-      );
+    .doc("offer")
+    .get();
 
-      let connAnswerDescription =
-        await newPeerConnection.userPeerConnection.createAnswer();
+  let newPeerConnection = new UserConnection(
+    servers,
+    doc.data()["offer"]["senderID"]
+  );
 
-      await newPeerConnection.userPeerConnection.setLocalDescription(
-        connAnswerDescription
-      );
+  newPeerConnection.userPeerConnection.setRemoteDescription(
+    doc.data()["offer"]["offer"]
+  );
 
-      await negDoc
-        .collection("users")
-        .doc(sessionStorage.getItem("userID"))
-        .collection("answer-candidates")
-        .add({
-          answer: JSON.stringify(
-            newPeerConnection.userPeerConnection.localDescription
-          ),
-        });
+  let connAnswerDescription =
+    await peerConnection.userPeerConnection.createAnswer();
 
-      unsubscribeFromOffer();
+  await peerConnection.userPeerConnection.setLocalDescription(
+    connAnswerDescription
+  );
+
+  await negDoc
+    .collection("users")
+    .doc(sessionStorage.getItem("userID"))
+    .collection("answer-candidates")
+    .add({
+      answer: JSON.stringify(
+        peerConnection.userPeerConnection.localDescription
+      ),
     });
 
-  peerConnections.push(newPeerConnection);
+  peerConnections.push(peerConnection);
 }
-
-async function postReturnAnswer() {}
 
 function isNotAlreadyConnected(userID) {
   for (let i = 0; i < peerConnections.length; i++) {
@@ -199,7 +234,7 @@ async function connectUser() {
   await addUserToDatabase();
   await checkQuene();
   console.log("Done waiting in quene");
-  await preformSignaling();
+  await runSignaling();
 }
 
 //Obtains devices from users hardware like the microhpone
