@@ -79,6 +79,16 @@ async function addUserToDatabase() {
       sessionStorage.getItem("userID")
     ),
   });
+
+  //Adds a listener to the user's offercandidate doc then sets the remote description to what appears in the document
+  let unsubscribeFromOffer = negDoc
+    .collection("users")
+    .doc(sessionStorage.getItem("userID"))
+    .collection("offer-candidates")
+    .onSnapshot(() => {
+      //Problem here: Can't run async function from function that isnt asynchronous
+      postReturnAnswer();
+    });
 }
 
 async function checkQuene() {
@@ -173,16 +183,6 @@ async function runSignaling() {
     }
   }
 }
-
-//Adds a listener to the user's offercandidate doc then sets the remote description to what appears in the document
-let unsubscribeFromOffer = negDoc
-  .collection("users")
-  .doc(sessionStorage.getItem("userID"))
-  .collection("offer-candidates")
-  .onSnapshot(() => {
-    //Problem here: Can't run async function from function that isnt asynchronous
-    postReturnAnswer();
-  });
 
 async function postReturnAnswer() {
   let doc = await negDoc
