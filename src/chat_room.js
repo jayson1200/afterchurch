@@ -60,7 +60,7 @@ async function addUserToDatabase() {
     .doc(sessionStorage.getItem("userID"))
     .collection("offer-candidates")
     .doc("metadata")
-    .set({ user_joined: Date.now() });
+    .set({ lastConnected: Date.now() });
 
   await negDoc
     .collection("users")
@@ -72,7 +72,9 @@ async function addUserToDatabase() {
     .doc(sessionStorage.getItem("userID"))
     .collection("answer-candidates")
     .doc("metadata")
-    .set({ user_joined: Date.now() });
+    .set({
+      lastConnected: Date.now(),
+    });
 
   await negDoc.update({
     quene: firebase.firestore.FieldValue.arrayUnion(
@@ -85,8 +87,8 @@ async function addUserToDatabase() {
     .collection("users")
     .doc(sessionStorage.getItem("userID"))
     .collection("offer-candidates")
+    .doc("metadata")
     .onSnapshot(() => {
-      //Problem here: Can't run async function from function that isnt asynchronous
       postReturnAnswer();
     });
 }
@@ -119,13 +121,6 @@ function waitInQuene() {
         resolve(true);
       }
     });
-
-    // let checkIfFront = window.setInterval(() => {
-    //   if (frontOfLine) {
-    //     clearInterval(checkIfFront);
-    //     resolve(true);
-    //   }
-    // }, 500);
   });
 }
 
@@ -163,23 +158,37 @@ async function runSignaling() {
           });
       }
 
-      //Get answer asynchronously from the user I just sent an offer
+      await negDoc
+        .collection("users")
+        .doc(userDoc.id)
+        .collection("offer-candidates")
+        .doc("metadata")
+        .set({
+          lastConnected: Date.now(),
+        });
 
-      /*add an onSnapshot listener to the answerCandidates collection of each user
-        This said, we shouldn't move on to the next step until this is finished
-      */
-      // let unsubscribeFromAnswer = negDoc
-      //   .collection("users")
-      //   .doc(userDoc.id)
-      //   .collection("answer-candidates")
-      //   .onSnapshot(() => {
-      //     for (let i = 0; i < peerConnections.length; i++){
-      //       //user.id could be pointing to the wrong thing or could be a memory leak
-      //       if (peerConnections[i].getRemoteUserID() == userDoc.id) {
-      //         peerConnections[i].userPeerConnection.setRemoteDescription()
-      //       }
-      //     }
-      //   });
+      let unsubscribeFromAnswer = negDoc
+        .collection("users")
+        .doc(userDoc.id)
+        .collection("answer-candidates")
+        .onSnapshot(async () => {
+          let doc = await negDoc
+            .collection("users")
+            .doc(userDoc.id)
+            .collection("answer-candidates")
+            .doc("answer")
+            .get();
+
+          for (let i = 0; i < peerConnections.length; i++) {
+            //user.id could be pointing to the wrong thing or could be a memory leak
+            if (peerConnections[i].getRemoteUserID() == userDoc.id) {
+              peerConnections[i].userPeerConnection.setRemoteDescription(
+                Json.parse(doc.data["answer"])
+              );
+            }
+          }
+          unsubscribeFromAnswer();
+        });
     }
   }
 }
@@ -190,35 +199,46 @@ async function postReturnAnswer() {
     .doc(sessionStorage.getItem("userID"))
     .collection("offer-candidates")
     .doc("offer")
-    .get();
+    .get()
+    // This would map the data from the document
+    .then(async (doc) => {
+      if (doc.exists) {
+        let newPeerConnection = new UserConnection(
+          servers,
+          doc.data()["senderID"]
+        );
 
-  let newPeerConnection = new UserConnection(
-    servers,
-    doc.data()["offer"]["senderID"]
-  );
+        await newPeerConnection.userPeerConnection.setRemoteDescription(
+          JSON.parse(doc.data()["offer"])
+        );
 
-  newPeerConnection.userPeerConnection.setRemoteDescription(
-    doc.data()["offer"]["offer"]
-  );
+        let connAnswerDescription =
+          await newPeerConnection.userPeerConnection.createAnswer();
 
-  let connAnswerDescription =
-    await peerConnection.userPeerConnection.createAnswer();
+        await newPeerConnection.userPeerConnection.setLocalDescription(
+          connAnswerDescription
+        );
 
-  await peerConnection.userPeerConnection.setLocalDescription(
-    connAnswerDescription
-  );
+        await negDoc
+          .collection("users")
+          .doc(sessionStorage.getItem("userID"))
+          .collection("answer-candidates")
+          .doc("answer")
+          .set({
+            answer: JSON.stringify(
+              newPeerConnection.userPeerConnection.localDescription
+            ),
+          });
 
-  await negDoc
-    .collection("users")
-    .doc(sessionStorage.getItem("userID"))
-    .collection("answer-candidates")
-    .add({
-      answer: JSON.stringify(
-        peerConnection.userPeerConnection.localDescription
-      ),
+        peerConnections.push(newPeerConnection);
+      } else {
+        // doc.data() will be undefined in this case
+        console.log("No such document!");
+      }
+    })
+    .catch((error) => {
+      console.log("Error getting document:", error);
     });
-
-  peerConnections.push(peerConnection);
 }
 
 function isNotAlreadyConnected(userID) {
