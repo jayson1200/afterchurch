@@ -110,13 +110,27 @@ function removeUserFromQuene() {
 }
 
 //Prefroms the action of waiting until it is this user's turn to connect to the other users
-function waitInQuene() {
-  return new Promise((resolve, reject) => {
-    let frontOfLine = false;
+async function waitInQuene() {
+  let doc = await negDoc.get();
 
+  if (doc.data()["quene"]["0"] == sessionStorage.getItem("userID")) {
+    return true;
+  }
+
+  return new Promise((resolve, reject) => {
     let unsubscribe = negDoc.onSnapshot((doc) => {
       if (doc.data()["quene"]["0"] == sessionStorage.getItem("userID")) {
-        frontOfLine = true;
+        unsubscribe();
+        resolve(true);
+      }
+    });
+  });
+}
+
+function waitTwoOrMoreUsers() {
+  return new Promise((resolve, reject) => {
+    let unsubscribe = negDoc.collection("users").onSnapshot((col) => {
+      if (Object.keys(col.docs.length) > 2) {
         unsubscribe();
         resolve(true);
       }
@@ -188,11 +202,14 @@ async function runSignaling() {
             }
           }
           unsubscribeFromAnswer();
+          removeUserFromQuene();
         });
     }
   }
 }
 
+//Gets the offer in the offercandidates collection, then set it as the remote description
+//Creates and answer then adds it to this users answercanditates collection
 async function postReturnAnswer() {
   let doc = await negDoc
     .collection("users")
@@ -252,6 +269,8 @@ function isNotAlreadyConnected(userID) {
 
 async function connectUser() {
   await addUserToDatabase();
+  await waitTwoOrMoreUsers();
+  console.log("Minimum users succeeded");
   await checkQuene();
   console.log("Done waiting in quene");
   await runSignaling();
