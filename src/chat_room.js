@@ -202,7 +202,6 @@ async function runSignaling() {
             }
           }
           unsubscribeFromAnswer();
-          removeUserFromQuene();
         });
     }
   }
