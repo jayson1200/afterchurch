@@ -36,6 +36,8 @@ const servers = {
 let negDoc;
 let peerConnections = [];
 let localStream;
+let unsubFromOfferListener;
+let isListInitDone = false;
 
 connectUser();
 
@@ -81,15 +83,21 @@ async function addUserToDatabase() {
       sessionStorage.getItem("userID")
     ),
   });
+}
 
-  //Adds a listener to the user's offercandidate doc then sets the remote description to what appears in the document
-  let unsubscribeFromOffer = negDoc
+//Adds a listener to the user's offercandidate doc then sets the remote description to what appears in the document
+function listenToOfferCandidates() {
+  unsubFromOfferListener = negDoc
     .collection("users")
     .doc(sessionStorage.getItem("userID"))
     .collection("offer-candidates")
     .doc("metadata")
     .onSnapshot(() => {
-      postReturnAnswer();
+      if (isListInitDone) {
+        console.log("posting return answer");
+        postReturnAnswer();
+      }
+      isListInitDone = true;
     });
 }
 
@@ -130,7 +138,7 @@ async function waitInQuene() {
 function waitTwoOrMoreUsers() {
   return new Promise((resolve, reject) => {
     let unsubscribe = negDoc.collection("users").onSnapshot((col) => {
-      if (Object.keys(col.docs.length) > 2) {
+      if (Object.keys(col.docs).length > 2) {
         unsubscribe();
         resolve(true);
       }
@@ -158,7 +166,7 @@ async function runSignaling() {
         await newPeerConnection.userPeerConnection.setLocalDescription(
           connOfferDescription
         );
-        console.log(newPeerConnection.userPeerConnection.localDescription);
+
         await negDoc
           .collection("users")
           .doc(userDoc.id)
@@ -268,8 +276,10 @@ function isNotAlreadyConnected(userID) {
 
 async function connectUser() {
   await addUserToDatabase();
+  console.log("added user to database");
+  listenToOfferCandidates();
   await waitTwoOrMoreUsers();
-  console.log("Minimum users succeeded");
+  console.log("Minimum users reached");
   await checkQuene();
   console.log("Done waiting in quene");
   await runSignaling();
