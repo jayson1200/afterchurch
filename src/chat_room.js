@@ -202,7 +202,7 @@ async function runSignaling() {
             .get();
 
           for (let i = 0; i < peerConnections.length; i++) {
-            //user.id could be pointing to the wrong thing or could be a memory leak
+            //user.id could be pointing to the wrong thing
             if (peerConnections[i].getRemoteUserID() == userDoc.id) {
               peerConnections[i].userPeerConnection.setRemoteDescription(
                 Json.parse(doc.data["answer"])
