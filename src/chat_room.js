@@ -34,10 +34,10 @@ const servers = {
 };
 
 let negDoc;
+//Switch peer connection to a hashmap for a better time complexity
 let peerConnections = [];
 let localStream;
 let unsubFromOfferListener;
-let isListInitDone = false;
 
 connectUser();
 
@@ -93,11 +93,8 @@ function listenToOfferCandidates() {
     .collection("offer-candidates")
     .doc("metadata")
     .onSnapshot(() => {
-      if (isListInitDone) {
-        console.log("posting return answer");
-        postReturnAnswer();
-      }
-      isListInitDone = true;
+      console.log("posting return answer");
+      postReturnAnswer();
     });
 }
 
@@ -200,7 +197,7 @@ async function runSignaling() {
             .collection("answer-candidates")
             .doc("answer")
             .get();
-
+          //Could probably make peerConnection search more efficient with a map instead of a list
           for (let i = 0; i < peerConnections.length; i++) {
             //user.id could be pointing to the wrong thing
             if (peerConnections[i].getRemoteUserID() == userDoc.id) {
