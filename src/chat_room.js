@@ -197,12 +197,19 @@ async function runSignaling() {
             .collection("answer-candidates")
             .doc("answer")
             .get();
-          //Could probably make peerConnection search more efficient with a map instead of a list
+          //Could probably make peerConnection search more efficient with a map instead of a list, so I don't have to loop through the entire thing
           for (let i = 0; i < peerConnections.length; i++) {
             //user.id could be pointing to the wrong thing
             if (peerConnections[i].getRemoteUserID() == userDoc.id) {
               peerConnections[i].userPeerConnection.setRemoteDescription(
                 Json.parse(doc.data["answer"])
+              );
+
+              console.log(
+                "User " +
+                  userDoc.id +
+                  " connected to " +
+                  sessionStorage.getItem("userID")
               );
             }
           }
