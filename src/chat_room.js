@@ -22,6 +22,9 @@ firebase.initializeApp(firebaseConfig);
 
 let db = firebase.firestore();
 
+//Ensures the first postReturnAnswer call is ignored
+let isInInit = false;
+
 const rootRef = db.collection("audio-rooms").doc("rooms");
 
 const servers = {
@@ -93,8 +96,11 @@ function listenToOfferCandidates() {
     .collection("offer-candidates")
     .doc("metadata")
     .onSnapshot(() => {
-      console.log("posting return answer");
-      postReturnAnswer();
+      if (isInInit) {
+        console.log("posting return answer");
+        postReturnAnswer();
+      }
+      isInInit = true;
     });
 }
 
@@ -175,6 +181,12 @@ async function runSignaling() {
             ),
             senderID: sessionStorage.getItem("userID"),
           });
+        
+        newPeerConnection.onicecandidate =  (event) => {
+          if (event.candidate) {
+            await negDoc.colletion("users").doc(userDoc.id).collection("offer-candidates").doc("sender-ice-candidates").set({"sender-ice-candidates": event.candidate });
+          }
+        }
       }
 
       await negDoc
@@ -197,23 +209,28 @@ async function runSignaling() {
             .collection("answer-candidates")
             .doc("answer")
             .get();
-          //Could probably make peerConnection search more efficient with a map instead of a list, so I don't have to loop through the entire thing
-          for (let i = 0; i < peerConnections.length; i++) {
-            //user.id could be pointing to the wrong thing
-            if (peerConnections[i].getRemoteUserID() == userDoc.id) {
-              peerConnections[i].userPeerConnection.setRemoteDescription(
-                Json.parse(doc.data["answer"])
-              );
+          
+          if (doc.exists) {
+            //Could probably make peerConnection search more efficient with a map instead of a list, so I don't have to loop through the entire thing
+            for (let i = 0; i < peerConnections.length; i++) {
+              //user.id could be pointing to the wrong thing
+              if (peerConnections[i].getRemoteUserID() == userDoc.id) {
+                peerConnections[i].userPeerConnection.setRemoteDescription(
+                  Json.parse(doc.data["answer"])
+                );
 
-              console.log(
-                "User " +
-                  userDoc.id +
-                  " connected to " +
-                  sessionStorage.getItem("userID")
-              );
+                console.log(
+                  "Receiving user " +
+                    userDoc.id +
+                    " connected to " +
+                    sessionStorage.getItem("userID") +
+                    " sending user"
+                );
+              }
             }
+
+              unsubscribeFromAnswer();
           }
-          unsubscribeFromAnswer();
         });
     }
   }
@@ -324,6 +341,8 @@ class UserConnection {
     //     this.remoteStream.addTrack(track);
     //   });
     // };
+
+    this.userPeerConnection.addEventListener()
   }
 
   getRemoteUserID() {
