@@ -80,6 +80,8 @@ async function addUserToDatabase() {
     .set({
       lastConnected: Date.now(),
     });
+  
+  await negDoc.collection("users").doc(sessionStorage.getItem("userID")).collection("ice-candidates").doc("metadata").set({ user_joined: Date.now() });
 
   await negDoc.update({
     quene: firebase.firestore.FieldValue.arrayUnion(
@@ -184,12 +186,22 @@ async function runSignaling() {
         
         newPeerConnection.onicecandidate = (event) => {
           if (event.candidate) {
-            await negDoc.colletion("users").doc(userDoc.id).collection("offer-candidates").doc("sender-ice-candidates").set({ "sender-ice-candidates": event.candidate });
+            await negDoc.colletion("users").doc(userDoc.id).collection("offer-candidates").doc("ice-candidates").set({"ice-candidates": event.candidate });
           }
         }
 
-        let unsubscribeIceReceiverListener = negDoc.collection("users").doc(userDoc.id).collection("answer-candidates").doc("receiver-ice-candidates").onSnapshot((doc) => {
+        let currIndex = 0; 
+
+        let unsubscribeIceReceiverListener = negDoc.collection("users").doc(userDoc.id).collection("answer-candidates").doc("ice-candidates").onSnapshot((doc) => {
           
+          newPeerConnection.addIceCandidate(doc.data["ice-candidates"][currIndex.toString()]);
+          
+        });
+
+        newPeerConnection.addEventListener("icegatheringstatechange", () => {
+          if (newPeerConnection.iceGatheringState == "gathering") {
+            unsubscribeIceReceiverListener();
+          }
         })
 
       }
@@ -271,9 +283,11 @@ async function postReturnAnswer() {
 
         newPeerConnection.onicecandidate =  (event) => {
           if (event.candidate) {
-            await negDoc.colletion("users").doc(sessionStorage.getItem("userID")).collection("answer-candidates").doc("receiver-ice-candidates").set({"receiver-ice-candidates": event.candidate });
+            await negDoc.colletion("users").doc(sessionStorage.getItem("userID")).collection("ice-candidates").doc("ice-candidates").set({"ice-candidates": event.candidate });
           }
         }
+
+        
 
         await negDoc
           .collection("users")
