@@ -186,21 +186,28 @@ async function runSignaling() {
         
         newPeerConnection.onicecandidate = (event) => {
           if (event.candidate) {
-            await negDoc.colletion("users").doc(userDoc.id).collection("offer-candidates").doc("ice-candidates").set({"ice-candidates": event.candidate });
+            await negDoc.colletion("users").doc(userDoc.id).collection("ice-candidates").doc("ice-candidates").set({"ice-candidates": event.candidate });
           }
         }
 
-        let currIndex = 0; 
+        let currCandidateIndex = 0; 
 
-        let unsubscribeIceReceiverListener = negDoc.collection("users").doc(userDoc.id).collection("answer-candidates").doc("ice-candidates").onSnapshot((doc) => {
+        let unsubscribeIceInitiatorListener = negDoc.collection("users").doc(userDoc.id).collection("ice-candidates").doc("ice-candidates").onSnapshot((doc) => {
           
-          newPeerConnection.addIceCandidate(doc.data["ice-candidates"][currIndex.toString()]);
+          let candidates = doc.data["ice-candidates"];
+
+          for (let i = currCandidateIndex; i < Object.keys(candidates).length; i++) {
+            newPeerConnection.addIceCandidate(doc.data["ice-candidates"][i.toString()]);
+            currCandidateIndex++;
+          }
+
+          newPeerConnection.addIceCandidate(doc.data["ice-candidates"][currCandidateIndex.toString()]);
           
         });
 
         newPeerConnection.addEventListener("icegatheringstatechange", () => {
-          if (newPeerConnection.iceGatheringState == "gathering") {
-            unsubscribeIceReceiverListener();
+          if (newPeerConnection.iceGatheringState == "complete") {
+            unsubscribeIceInitiatorListener();
           }
         })
 
@@ -287,7 +294,26 @@ async function postReturnAnswer() {
           }
         }
 
-        
+        let currCandidateIndex = 0; 
+
+        let unsubscribeIceReceiverListener = negDoc.collection("users").doc(userDoc.id).collection("ice-candidates").doc("ice-candidates").onSnapshot((doc) => {
+          
+          let candidates = doc.data["ice-candidates"];
+
+          for (let i = currCandidateIndex; i < Object.keys(candidates).length; i++) {
+            newPeerConnection.addIceCandidate(doc.data["ice-candidates"][i.toString()]);
+            currCandidateIndex++;
+          }
+
+          newPeerConnection.addIceCandidate(doc.data["ice-candidates"][currCandidateIndex.toString()]);
+          
+        });
+
+        newPeerConnection.addEventListener("icegatheringstatechange", () => {
+          if (newPeerConnection.iceGatheringState == "complete") {
+            unsubscribeIceReceiverListener();
+          }
+        })
 
         await negDoc
           .collection("users")
