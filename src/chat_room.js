@@ -182,11 +182,16 @@ async function runSignaling() {
             senderID: sessionStorage.getItem("userID"),
           });
         
-        newPeerConnection.onicecandidate =  (event) => {
+        newPeerConnection.onicecandidate = (event) => {
           if (event.candidate) {
-            await negDoc.colletion("users").doc(userDoc.id).collection("offer-candidates").doc("sender-ice-candidates").set({"sender-ice-candidates": event.candidate });
+            await negDoc.colletion("users").doc(userDoc.id).collection("offer-candidates").doc("sender-ice-candidates").set({ "sender-ice-candidates": event.candidate });
           }
         }
+
+        let unsubscribeIceReceiverListener = negDoc.collection("users").doc(userDoc.id).collection("answer-candidates").doc("receiver-ice-candidates").onSnapshot((doc) => {
+          
+        })
+
       }
 
       await negDoc
@@ -263,6 +268,12 @@ async function postReturnAnswer() {
         await newPeerConnection.userPeerConnection.setLocalDescription(
           connAnswerDescription
         );
+
+        newPeerConnection.onicecandidate =  (event) => {
+          if (event.candidate) {
+            await negDoc.colletion("users").doc(sessionStorage.getItem("userID")).collection("answer-candidates").doc("receiver-ice-candidates").set({"receiver-ice-candidates": event.candidate });
+          }
+        }
 
         await negDoc
           .collection("users")
