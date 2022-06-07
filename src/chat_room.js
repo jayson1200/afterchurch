@@ -80,8 +80,13 @@ async function addUserToDatabase() {
     .set({
       lastConnected: Date.now(),
     });
-  
-  await negDoc.collection("users").doc(sessionStorage.getItem("userID")).collection("ice-candidates").doc("metadata").set({ user_joined: Date.now() });
+
+  await negDoc
+    .collection("users")
+    .doc(sessionStorage.getItem("userID"))
+    .collection("ice-candidates")
+    .doc("metadata")
+    .set({ user_joined: Date.now() });
 
   await negDoc.update({
     quene: firebase.firestore.FieldValue.arrayUnion(
@@ -183,34 +188,49 @@ async function runSignaling() {
             ),
             senderID: sessionStorage.getItem("userID"),
           });
-        
-        newPeerConnection.onicecandidate = (event) => {
+
+        newPeerConnection.onicecandidate = async (event) => {
           if (event.candidate) {
-            await negDoc.colletion("users").doc(userDoc.id).collection("ice-candidates").doc("ice-candidates").set({"ice-candidates": event.candidate });
+            await negDoc
+              .colletion("users")
+              .doc(userDoc.id)
+              .collection("ice-candidates")
+              .doc("ice-candidates")
+              .set({ "ice-candidates": event.candidate });
           }
-        }
+        };
 
-        let currCandidateIndex = 0; 
+        let currCandidateIndex = 0;
 
-        let unsubscribeIceInitiatorListener = negDoc.collection("users").doc(userDoc.id).collection("ice-candidates").doc("ice-candidates").onSnapshot((doc) => {
-          
-          let candidates = doc.data["ice-candidates"];
+        let unsubscribeIceInitiatorListener = negDoc
+          .collection("users")
+          .doc(userDoc.id)
+          .collection("ice-candidates")
+          .doc("ice-candidates")
+          .onSnapshot((doc) => {
+            let candidates = doc.data["ice-candidates"];
 
-          for (let i = currCandidateIndex; i < Object.keys(candidates).length; i++) {
-            newPeerConnection.addIceCandidate(doc.data["ice-candidates"][i.toString()]);
-            currCandidateIndex++;
-          }
+            for (
+              let i = currCandidateIndex;
+              i < Object.keys(candidates).length;
+              i++
+            ) {
+              newPeerConnection.addIceCandidate(
+                doc.data["ice-candidates"][i.toString()]
+              );
+              currCandidateIndex++;
+            }
 
-          newPeerConnection.addIceCandidate(doc.data["ice-candidates"][currCandidateIndex.toString()]);
-          
-        });
+            newPeerConnection.addIceCandidate(
+              doc.data["ice-candidates"][currCandidateIndex.toString()]
+            );
+          });
 
         newPeerConnection.addEventListener("icegatheringstatechange", () => {
           if (newPeerConnection.iceGatheringState == "complete") {
             unsubscribeIceInitiatorListener();
           }
-        })
-
+        });
       }
 
       await negDoc
@@ -233,7 +253,7 @@ async function runSignaling() {
             .collection("answer-candidates")
             .doc("answer")
             .get();
-          
+
           if (doc.exists) {
             //Could probably make peerConnection search more efficient with a map instead of a list, so I don't have to loop through the entire thing
             for (let i = 0; i < peerConnections.length; i++) {
@@ -253,7 +273,7 @@ async function runSignaling() {
               }
             }
 
-              unsubscribeFromAnswer();
+            unsubscribeFromAnswer();
           }
         });
     }
@@ -288,32 +308,48 @@ async function postReturnAnswer() {
           connAnswerDescription
         );
 
-        newPeerConnection.onicecandidate =  (event) => {
+        newPeerConnection.onicecandidate = async (event) => {
           if (event.candidate) {
-            await negDoc.colletion("users").doc(sessionStorage.getItem("userID")).collection("ice-candidates").doc("ice-candidates").set({"ice-candidates": event.candidate });
+            await negDoc
+              .colletion("users")
+              .doc(sessionStorage.getItem("userID"))
+              .collection("ice-candidates")
+              .doc("ice-candidates")
+              .set({ "ice-candidates": event.candidate });
           }
-        }
+        };
 
-        let currCandidateIndex = 0; 
+        let currCandidateIndex = 0;
 
-        let unsubscribeIceReceiverListener = negDoc.collection("users").doc(userDoc.id).collection("ice-candidates").doc("ice-candidates").onSnapshot((doc) => {
-          
-          let candidates = doc.data["ice-candidates"];
+        let unsubscribeIceReceiverListener = negDoc
+          .collection("users")
+          .doc(userDoc.id)
+          .collection("ice-candidates")
+          .doc("ice-candidates")
+          .onSnapshot((doc) => {
+            let candidates = doc.data["ice-candidates"];
 
-          for (let i = currCandidateIndex; i < Object.keys(candidates).length; i++) {
-            newPeerConnection.addIceCandidate(doc.data["ice-candidates"][i.toString()]);
-            currCandidateIndex++;
-          }
+            for (
+              let i = currCandidateIndex;
+              i < Object.keys(candidates).length;
+              i++
+            ) {
+              newPeerConnection.addIceCandidate(
+                doc.data["ice-candidates"][i.toString()]
+              );
+              currCandidateIndex++;
+            }
 
-          newPeerConnection.addIceCandidate(doc.data["ice-candidates"][currCandidateIndex.toString()]);
-          
-        });
+            newPeerConnection.addIceCandidate(
+              doc.data["ice-candidates"][currCandidateIndex.toString()]
+            );
+          });
 
         newPeerConnection.addEventListener("icegatheringstatechange", () => {
           if (newPeerConnection.iceGatheringState == "complete") {
             unsubscribeIceReceiverListener();
           }
-        })
+        });
 
         await negDoc
           .collection("users")
@@ -393,7 +429,7 @@ class UserConnection {
     //   });
     // };
 
-    this.userPeerConnection.addEventListener()
+    this.userPeerConnection.addEventListener();
   }
 
   getRemoteUserID() {
