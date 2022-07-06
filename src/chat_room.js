@@ -333,17 +333,6 @@ async function postReturnAnswer() {
           connAnswerDescription
         );
 
-        await negDoc
-          .collection("users")
-          .doc(sessionStorage.getItem("userID"))
-          .collection("answer-candidates")
-          .doc("answer")
-          .set({
-            answer: JSON.stringify(
-              newPeerConnection.userPeerConnection.localDescription
-            ),
-          });
-
         newPeerConnection.userPeerConnection.onicecandidate = async (event) => {
           if (event.candidate) {
             await negDoc
@@ -396,6 +385,17 @@ async function postReturnAnswer() {
             }
           }
         );
+
+        await negDoc
+          .collection("users")
+          .doc(sessionStorage.getItem("userID"))
+          .collection("answer-candidates")
+          .doc("answer")
+          .set({
+            answer: JSON.stringify(
+              newPeerConnection.userPeerConnection.localDescription
+            ),
+          });
 
         peerConnections.push(newPeerConnection);
       } else {
