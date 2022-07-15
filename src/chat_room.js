@@ -2,6 +2,7 @@ import firebase from "firebase/app";
 import "firebase/firestore";
 import "./styles/styles-room.css";
 
+//!When testing this. Be sure to wait for sometime beofre adding the second user
 const firebaseConfig = {
   apiKey: "AIzaSyAEsNo8T2XQjf0o1z4zoXmz4F0wrBSImSc",
 
@@ -111,7 +112,8 @@ function listenToOfferCandidates() {
     .doc("metadata")
     .onSnapshot(() => {
       if (isInInit) {
-        console.log("posting return answer");
+        console.log("posting return answer Time: " + Date.now());
+
         postReturnAnswer();
       }
       isInInit = true;
@@ -170,102 +172,47 @@ async function runSignaling() {
 
   //Adds an offer to all unadded users
   for (let userDoc of users.docs) {
-    if (isNotAlreadyConnected(userDoc.id)) {
+    if (
+      isNotAlreadyConnected(userDoc.id) &&
+      userDoc.id != sessionStorage.getItem("userID") &&
+      userDoc.id != "metadata"
+    ) {
       let newPeerConnection = new UserConnection(servers, userDoc.id);
 
-      if (
-        userDoc.id != sessionStorage.getItem("userID") &&
-        userDoc.id != "metadata"
-      ) {
-        let connOfferDescription =
-          await newPeerConnection.userPeerConnection.createOffer();
+      peerConnections.push(newPeerConnection);
 
-        await newPeerConnection.userPeerConnection.setLocalDescription(
-          connOfferDescription
-        );
+      console.log("Time: " + Date.now() + " Connecting to " + userDoc.id);
 
-        await negDoc
-          .collection("users")
-          .doc(userDoc.id)
-          .collection("offer-candidates")
-          .doc("offer")
-          .set({
-            offer: JSON.stringify(
-              newPeerConnection.userPeerConnection.localDescription
-            ),
-            senderID: sessionStorage.getItem("userID"),
-          });
-
-        //Creates the doc and array field for userA to add their ice-candidates to
-        await negDoc
-          .collection("users")
-          .doc(userDoc.id)
-          .collection("ice-candidates")
-          .doc(sessionStorage.getItem("userID"))
-          .set({ icecandidates: firebase.firestore.FieldValue.arrayUnion() });
-
-        newPeerConnection.userPeerConnection.onicecandidate = async (event) => {
-          if (event.candidate) {
-            await negDoc
-              .collection("users")
-              .doc(userDoc.id)
-              .collection("ice-candidates")
-              .doc(sessionStorage.getItem("userID"))
-              .update({
-                icecandidates: firebase.firestore.FieldValue.arrayUnion(
-                  event.candidate
-                ),
-              });
-          }
-        };
-
-        let currCandidateIndex = 0;
-
-        let unsubscribeIceInitiatorListener = negDoc
-          .collection("users")
-          .doc(userDoc.id)
-          .collection("ice-candidates")
-          .doc(userDoc.id)
-          .onSnapshot((doc) => {
-            let candidates = doc.data()["icecandidates"];
-
-            for (
-              let i = currCandidateIndex;
-              i < Object.keys(candidates).length;
-              i++
-            ) {
-              newPeerConnection.userPeerConnection.addIceCandidate(
-                doc.data()["icecandidates"][i.toString()]
-              );
-              currCandidateIndex++;
-            }
-
-            newPeerConnection.userPeerConnection.addIceCandidate(
-              doc.data()["icecandidates"][currCandidateIndex.toString()]
-            );
-          });
-
-        newPeerConnection.userPeerConnection.addEventListener(
-          "icegatheringstatechange",
-          () => {
-            if (
-              newPeerConnection.userPeerConnection.iceGatheringState ==
-              "complete"
-            ) {
-              unsubscribeIceInitiatorListener();
-            }
-          }
-        );
-      }
-
+      //Creates the doc and array field for userA to add their ice-candidates to
       await negDoc
         .collection("users")
         .doc(userDoc.id)
-        .collection("offer-candidates")
-        .doc("metadata")
-        .set({
-          lastConnected: Date.now(),
-        });
+        .collection("ice-candidates")
+        .doc(sessionStorage.getItem("userID"))
+        .set({ icecandidates: firebase.firestore.FieldValue.arrayUnion() });
+
+      newPeerConnection.userPeerConnection.onicecandidate = async (event) => {
+        console.log("Received Ice Candidate");
+        if (event.candidate) {
+          await negDoc
+            .collection("users")
+            .doc(userDoc.id)
+            .collection("ice-candidates")
+            .doc(sessionStorage.getItem("userID"))
+            .update({
+              icecandidates: firebase.firestore.FieldValue.arrayUnion(
+                event.candidate
+              ),
+            });
+        }
+      };
+
+      let connOfferDescription =
+        await newPeerConnection.userPeerConnection.createOffer();
+
+      await newPeerConnection.userPeerConnection.setLocalDescription(
+        new RTCSessionDescription(connOfferDescription)
+      );
 
       let unsubscribeFromAnswer = negDoc
         .collection("users")
@@ -285,7 +232,7 @@ async function runSignaling() {
               //user.id could be pointing to the wrong thing
               if (peerConnections[i].getRemoteUserID() == userDoc.id) {
                 peerConnections[i].userPeerConnection.setRemoteDescription(
-                  Json.parse(doc.data()["answer"])
+                  new RTCSessionDescription(JSON.parse(doc.data()["answer"]))
                 );
 
                 console.log(
@@ -300,6 +247,75 @@ async function runSignaling() {
 
             unsubscribeFromAnswer();
           }
+        });
+
+      await negDoc
+        .collection("users")
+        .doc(userDoc.id)
+        .collection("offer-candidates")
+        .doc("offer")
+        .set({
+          offer: JSON.stringify(
+            newPeerConnection.userPeerConnection.localDescription
+          ),
+          senderID: sessionStorage.getItem("userID"),
+        });
+
+      console.log(
+        "Time:" + Date.now() + " Posting offer. user id: " + userDoc.id
+      );
+
+      let currCandidateIndex = 0;
+      let initCall = false;
+
+      let unsubscribeIceInitiatorListener = negDoc
+        .collection("users")
+        .doc(userDoc.id)
+        .collection("ice-candidates")
+        .doc(userDoc.id)
+        .onSnapshot((doc) => {
+          if (initCall) {
+            let candidates = doc.data()["icecandidates"];
+
+            for (
+              let i = currCandidateIndex;
+              i < Object.keys(candidates).length;
+              i++
+            ) {
+              newPeerConnection.userPeerConnection.addIceCandidate(
+                doc.data()["icecandidates"][i.toString()]
+              );
+              currCandidateIndex++;
+            }
+
+            newPeerConnection.userPeerConnection.addIceCandidate(
+              doc.data()["icecandidates"][currCandidateIndex.toString()]
+            );
+
+            console.log("Added Ice candidate");
+
+            initCall = true;
+          }
+        });
+
+      newPeerConnection.userPeerConnection.addEventListener(
+        "icegatheringstatechange",
+        () => {
+          if (
+            newPeerConnection.userPeerConnection.iceGatheringState == "complete"
+          ) {
+            unsubscribeIceInitiatorListener();
+          }
+        }
+      );
+
+      await negDoc
+        .collection("users")
+        .doc(userDoc.id)
+        .collection("offer-candidates")
+        .doc("metadata")
+        .set({
+          lastConnected: Date.now(),
         });
     }
   }
@@ -323,14 +339,14 @@ async function postReturnAnswer() {
         );
 
         await newPeerConnection.userPeerConnection.setRemoteDescription(
-          JSON.parse(doc.data()["offer"])
+          new RTCSessionDescription(JSON.parse(doc.data()["offer"]))
         );
 
         let connAnswerDescription =
           await newPeerConnection.userPeerConnection.createAnswer();
 
         await newPeerConnection.userPeerConnection.setLocalDescription(
-          connAnswerDescription
+          new RTCSessionDescription(connAnswerDescription)
         );
 
         newPeerConnection.userPeerConnection.onicecandidate = async (event) => {
@@ -350,28 +366,36 @@ async function postReturnAnswer() {
 
         let currCandidateIndex = 0;
 
+        let receiverInit = false;
+
         let unsubscribeIceReceiverListener = negDoc
           .collection("users")
           .doc(newPeerConnection.remoteUserID)
           .collection("ice-candidates")
           .doc(sessionStorage.getItem("userID"))
           .onSnapshot((doc) => {
-            let candidates = doc.data()["icecandidates"];
+            if (receiverInit) {
+              let candidates = doc.data()["icecandidates"];
 
-            for (
-              let i = currCandidateIndex;
-              i < Object.keys(candidates).length;
-              i++
-            ) {
+              for (
+                let i = currCandidateIndex;
+                i < Object.keys(candidates).length;
+                i++
+              ) {
+                newPeerConnection.userPeerConnection.addIceCandidate(
+                  doc.data()["icecandidates"][i.toString()]
+                );
+                currCandidateIndex++;
+              }
+
               newPeerConnection.userPeerConnection.addIceCandidate(
-                doc.data()["icecandidates"][i.toString()]
+                doc.data()["icecandidates"][currCandidateIndex.toString()]
               );
-              currCandidateIndex++;
+
+              console.log("Added Ice candidate");
             }
 
-            newPeerConnection.userPeerConnection.addIceCandidate(
-              doc.data()["icecandidates"][currCandidateIndex.toString()]
-            );
+            receiverInit = true;
           });
 
         newPeerConnection.userPeerConnection.addEventListener(
