@@ -23,6 +23,8 @@ firebase.initializeApp(firebaseConfig);
 
 let db = firebase.firestore();
 
+let audioPlayer = document.getElementById("audio-player");
+
 //Ensures the first postReturnAnswer call is ignored
 let isInInit = false;
 
@@ -181,6 +183,8 @@ async function runSignaling() {
 
       peerConnections.push(newPeerConnection);
 
+      setStream(peerConnections.length - 1);
+
       console.log("Time: " + Date.now() + " Connecting to " + userDoc.id);
 
       //Creates the doc and array field for userA to add their ice-candidates to
@@ -201,7 +205,7 @@ async function runSignaling() {
             .doc(sessionStorage.getItem("userID"))
             .update({
               icecandidates: firebase.firestore.FieldValue.arrayUnion(
-                event.candidate
+                event.candidate.toJSON()
               ),
             });
         }
@@ -352,13 +356,13 @@ async function postReturnAnswer() {
         newPeerConnection.userPeerConnection.onicecandidate = async (event) => {
           if (event.candidate) {
             await negDoc
-              .colletion("users")
+              .collection("users")
               .doc(sessionStorage.getItem("userID"))
               .collection("ice-candidates")
-              .doc("ice-candidates")
+              .doc(sessionStorage.getItem("userID"))
               .set({
                 icecandidates: firebase.firestore.FieldValue.arrayUnion(
-                  event.candidate
+                  event.candidate.toJSON()
                 ),
               });
           }
@@ -442,6 +446,7 @@ function isNotAlreadyConnected(userID) {
 }
 
 async function connectUser() {
+  setAudioDevice();
   await addUserToDatabase();
   console.log("added user to database");
   listenToOfferCandidates();
@@ -459,12 +464,14 @@ async function setAudioDevice() {
     video: false,
     audio: true,
   });
+}
 
-  //Pushes tracks from local stream to peer connection
-  //We input localstream to make sure everything is synchronized by being grouped together
+//Pushes tracks from local stream to peer connection
+//We input localstream to make sure everything is synchronized by being grouped together
+function setStream(index) {
   try {
     localStream.getAudioTracks().forEach((track) => {
-      pc.addTrack(track, localStream);
+      peerConnections[index].userPeerConnection.addTrack(track, localStream);
     });
   } catch (error) {
     alert(
@@ -482,13 +489,13 @@ class UserConnection {
     this.userIsConnected = false;
 
     //Here we add our track to the remoteStream from our peer connection
-    // this.userPeerConnection.ontrack = (event) => {
-    //   event.streams[0].getTracks().forEach((track) => {
-    //     this.remoteStream.addTrack(track);
-    //   });
-    // };
+    this.userPeerConnection.ontrack = (event) => {
+      event.streams[0].getTracks().forEach((track) => {
+        this.remoteStream.addTrack(track);
+      });
+    };
 
-    //this.userPeerConnection.addEventListener();
+    audioPlayer.srcObject = this.remoteStream;
   }
 
   getRemoteUserID() {
