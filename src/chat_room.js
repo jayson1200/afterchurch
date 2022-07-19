@@ -2,7 +2,6 @@ import firebase from "firebase/app";
 import "firebase/firestore";
 import "./styles/styles-room.css";
 
-//!When testing this. Be sure to wait for sometime beofre adding the second user
 const firebaseConfig = {
   apiKey: "AIzaSyAEsNo8T2XQjf0o1z4zoXmz4F0wrBSImSc",
 
@@ -97,12 +96,6 @@ async function addUserToDatabase() {
     .collection("ice-candidates")
     .doc(sessionStorage.getItem("userID"))
     .set({ icecandidates: firebase.firestore.FieldValue.arrayUnion() });
-
-  await negDoc.update({
-    quene: firebase.firestore.FieldValue.arrayUnion(
-      sessionStorage.getItem("userID")
-    ),
-  });
 }
 
 //Adds a listener to the user's offercandidate doc then sets the remote description to what appears in the document
@@ -195,6 +188,50 @@ async function runSignaling() {
         .doc(sessionStorage.getItem("userID"))
         .set({ icecandidates: firebase.firestore.FieldValue.arrayUnion() });
 
+      let currCandidateIndex = 0;
+      let initCall = false;
+
+      let unsubscribeIceInitiatorListener = negDoc
+        .collection("users")
+        .doc(userDoc.id)
+        .collection("ice-candidates")
+        .doc(userDoc.id)
+        .onSnapshot((doc) => {
+          if (initCall) {
+            let candidates = doc.data()["icecandidates"];
+
+            for (
+              let i = currCandidateIndex;
+              i < Object.keys(candidates).length;
+              i++
+            ) {
+              newPeerConnection.userPeerConnection.addIceCandidate(
+                new RTCIceCandidate(doc.data()["icecandidates"][i.toString()])
+              );
+              currCandidateIndex++;
+            }
+
+            // newPeerConnection.userPeerConnection.addIceCandidate(
+            //   doc.data()["icecandidates"][currCandidateIndex.toString()]
+            // );
+
+            console.log("Added Ice candidate");
+
+            initCall = true;
+          }
+        });
+
+      newPeerConnection.userPeerConnection.addEventListener(
+        "icegatheringstatechange",
+        () => {
+          if (
+            newPeerConnection.userPeerConnection.iceGatheringState == "complete"
+          ) {
+            unsubscribeIceInitiatorListener();
+          }
+        }
+      );
+
       newPeerConnection.userPeerConnection.onicecandidate = async (event) => {
         console.log("Received Ice Candidate");
         if (event.candidate) {
@@ -269,50 +306,6 @@ async function runSignaling() {
         "Time:" + Date.now() + " Posting offer. user id: " + userDoc.id
       );
 
-      let currCandidateIndex = 0;
-      let initCall = false;
-
-      let unsubscribeIceInitiatorListener = negDoc
-        .collection("users")
-        .doc(userDoc.id)
-        .collection("ice-candidates")
-        .doc(userDoc.id)
-        .onSnapshot((doc) => {
-          if (initCall) {
-            let candidates = doc.data()["icecandidates"];
-
-            for (
-              let i = currCandidateIndex;
-              i < Object.keys(candidates).length;
-              i++
-            ) {
-              newPeerConnection.userPeerConnection.addIceCandidate(
-                doc.data()["icecandidates"][i.toString()]
-              );
-              currCandidateIndex++;
-            }
-
-            newPeerConnection.userPeerConnection.addIceCandidate(
-              doc.data()["icecandidates"][currCandidateIndex.toString()]
-            );
-
-            console.log("Added Ice candidate");
-
-            initCall = true;
-          }
-        });
-
-      newPeerConnection.userPeerConnection.addEventListener(
-        "icegatheringstatechange",
-        () => {
-          if (
-            newPeerConnection.userPeerConnection.iceGatheringState == "complete"
-          ) {
-            unsubscribeIceInitiatorListener();
-          }
-        }
-      );
-
       await negDoc
         .collection("users")
         .doc(userDoc.id)
@@ -353,21 +346,6 @@ async function postReturnAnswer() {
           new RTCSessionDescription(connAnswerDescription)
         );
 
-        newPeerConnection.userPeerConnection.onicecandidate = async (event) => {
-          if (event.candidate) {
-            await negDoc
-              .collection("users")
-              .doc(sessionStorage.getItem("userID"))
-              .collection("ice-candidates")
-              .doc(sessionStorage.getItem("userID"))
-              .set({
-                icecandidates: firebase.firestore.FieldValue.arrayUnion(
-                  event.candidate.toJSON()
-                ),
-              });
-          }
-        };
-
         let currCandidateIndex = 0;
 
         let receiverInit = false;
@@ -387,14 +365,14 @@ async function postReturnAnswer() {
                 i++
               ) {
                 newPeerConnection.userPeerConnection.addIceCandidate(
-                  doc.data()["icecandidates"][i.toString()]
+                  new RTCIceCandidate(doc.data()["icecandidates"][i.toString()])
                 );
                 currCandidateIndex++;
               }
 
-              newPeerConnection.userPeerConnection.addIceCandidate(
-                doc.data()["icecandidates"][currCandidateIndex.toString()]
-              );
+              // newPeerConnection.userPeerConnection.addIceCandidate(
+              //   new RTCIceCandidate(doc.data()["icecandidates"][currCandidateIndex.toString()])
+              // );
 
               console.log("Added Ice candidate");
             }
@@ -413,6 +391,21 @@ async function postReturnAnswer() {
             }
           }
         );
+
+        newPeerConnection.userPeerConnection.onicecandidate = async (event) => {
+          if (event.candidate) {
+            await negDoc
+              .collection("users")
+              .doc(sessionStorage.getItem("userID"))
+              .collection("ice-candidates")
+              .doc(sessionStorage.getItem("userID"))
+              .set({
+                icecandidates: firebase.firestore.FieldValue.arrayUnion(
+                  event.candidate.toJSON()
+                ),
+              });
+          }
+        };
 
         await negDoc
           .collection("users")
@@ -450,6 +443,7 @@ async function connectUser() {
   await addUserToDatabase();
   console.log("added user to database");
   listenToOfferCandidates();
+  await addUserToQuene();
   await waitTwoOrMoreUsers();
   console.log("Minimum users reached");
   await checkQuene();
@@ -481,6 +475,13 @@ function setStream(index) {
   }
 }
 
+async function addUserToQuene() {
+  await negDoc.update({
+    quene: firebase.firestore.FieldValue.arrayUnion(
+      sessionStorage.getItem("userID")
+    ),
+  });
+}
 class UserConnection {
   constructor(servers, remoteUserID) {
     this.userPeerConnection = new RTCPeerConnection(servers);
