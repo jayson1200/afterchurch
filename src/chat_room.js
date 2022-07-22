@@ -223,9 +223,12 @@ async function runSignaling() {
                   .doc(newPeerConnection.remoteUserID)
                   .collection("ice-candidates")
                   .doc(sessionStorage.getItem("userID"))
-              )["icecandidates"];
+                  .get()
+              ).data()["icecandidates"];
 
-              console.log("Adding Ice candidates");
+              console.log("Adding Ice candidates at time: " + Date.now());
+
+              console.log(candidates);
 
               for (let i = 0; i < Object.keys(candidates).length; i++) {
                 newPeerConnection.userPeerConnection.addIceCandidate(
@@ -261,6 +264,8 @@ async function runSignaling() {
               .collection("gathering")
               .doc("gatheringstate")
               .set({ gatheringcomplete: true });
+
+            console.log("Set gatheringstate true at: " + Date.now());
           }
 
           console.log(newPeerConnection.userPeerConnection.iceGatheringState);
@@ -380,9 +385,10 @@ async function postReturnAnswer() {
                     .doc(newPeerConnection.remoteUserID)
                     .collection("ice-candidates")
                     .doc(sessionStorage.getItem("userID"))
-                )["icecandidates"];
+                    .get()
+                ).data()["icecandidates"];
 
-                console.log("Adding Ice candidates");
+                console.log("Adding Ice candidates at time: " + Date.now);
 
                 for (let i = 0; i < Object.keys(candidates).length; i++) {
                   newPeerConnection.userPeerConnection.addIceCandidate(
@@ -410,6 +416,7 @@ async function postReturnAnswer() {
                 .set({
                   icecandidates: currentUserIceCandidates,
                 });
+
               await negDoc
                 .collection("users")
                 .doc(sessionStorage.getItem("userID"))
@@ -418,6 +425,8 @@ async function postReturnAnswer() {
                 .collection("gathering")
                 .doc("gatheringstate")
                 .set({ gatheringcomplete: true });
+
+              console.log("Set gatheringstate true at: " + Date.now());
             }
 
             console.log(newPeerConnection.userPeerConnection.iceGatheringState);
