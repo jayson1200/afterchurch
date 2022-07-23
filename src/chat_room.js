@@ -230,6 +230,12 @@ async function runSignaling() {
 
               console.log(candidates);
 
+              await newPeerConnection.waitRemoteOffer();
+
+              console.log("Finished waiting for remote answer");
+
+              console.log(newPeerConnection.userPeerConnection.signalingState);
+
               for (let i = 0; i < Object.keys(candidates).length; i++) {
                 newPeerConnection.userPeerConnection.addIceCandidate(
                   new RTCIceCandidate(candidates[i.toString()])
@@ -388,6 +394,14 @@ async function postReturnAnswer() {
                     .get()
                 ).data()["icecandidates"];
 
+                console.log(
+                  newPeerConnection.userPeerConnection.signalingState
+                );
+
+                await newPeerConnection.waitRemoteOffer();
+
+                console.log("Finished waiting for remote answer");
+
                 console.log("Adding Ice candidates at time: " + Date.now);
 
                 for (let i = 0; i < Object.keys(candidates).length; i++) {
@@ -533,7 +547,6 @@ class UserConnection {
     this.remoteUserID = remoteUserID;
     this.userIsConnected = false;
 
-    //Here we add our track to the remoteStream from our peer connection
     this.userPeerConnection.ontrack = (event) => {
       event.streams[0].getTracks().forEach((track) => {
         this.remoteStream.addTrack(track);
@@ -541,6 +554,19 @@ class UserConnection {
     };
 
     audioPlayer.srcObject = this.remoteStream;
+  }
+
+  async waitRemoteOffer() {
+    return new Promise((resolve, reject) => {
+      this.userPeerConnection.addEventListener(
+        "signalingstatechange",
+        (state) => {
+          if (state == "have-remote-offer") {
+            resolve(true);
+          }
+        }
+      );
+    });
   }
 
   getRemoteUserID() {
