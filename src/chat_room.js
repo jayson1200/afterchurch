@@ -211,7 +211,7 @@ async function runSignaling() {
         .collection("users")
         .doc(userDoc.id)
         .collection("ice-candidates")
-        .doc(sessionStorage.getItem("userID"))
+        .doc(newPeerConnection.remoteUserID)
         .collection("gathering")
         .doc("gatheringstate")
         .onSnapshot(async (snapshot) => {
@@ -222,11 +222,9 @@ async function runSignaling() {
                   .collection("users")
                   .doc(newPeerConnection.remoteUserID)
                   .collection("ice-candidates")
-                  .doc(sessionStorage.getItem("userID"))
+                  .doc(newPeerConnection.remoteUserID)
                   .get()
               ).data()["icecandidates"];
-
-              console.log("Adding Ice candidates at time: " + Date.now());
 
               console.log(candidates);
 
@@ -241,6 +239,10 @@ async function runSignaling() {
                   new RTCIceCandidate(candidates[i.toString()])
                 );
               }
+
+              console.log(
+                "Finished adding Ice candidates at time: " + Date.now
+              );
 
               unsubscribeIceInitiatorListener();
             }
@@ -309,7 +311,9 @@ async function runSignaling() {
             for (let i = 0; i < peerConnections.length; i++) {
               //user.id could be pointing to the wrong thing
               if (peerConnections[i].getRemoteUserID() == userDoc.id) {
-                peerConnections[i].userPeerConnection.setRemoteDescription(
+                await peerConnections[
+                  i
+                ].userPeerConnection.setRemoteDescription(
                   new RTCSessionDescription(doc.data()["answer"])
                 );
 
@@ -377,9 +381,9 @@ async function postReturnAnswer() {
 
         let unsubscribeIceReceiverListener = negDoc
           .collection("users")
-          .doc(newPeerConnection.remoteUserID)
-          .collection("ice-candidates")
           .doc(sessionStorage.getItem("userID"))
+          .collection("ice-candidates")
+          .doc(newPeerConnection.remoteUserID)
           .collection("gathering")
           .doc("gatheringstate")
           .onSnapshot(async (snapshot) => {
@@ -388,9 +392,9 @@ async function postReturnAnswer() {
                 let candidates = (
                   await negDoc
                     .collection("users")
-                    .doc(newPeerConnection.remoteUserID)
-                    .collection("ice-candidates")
                     .doc(sessionStorage.getItem("userID"))
+                    .collection("ice-candidates")
+                    .doc(newPeerConnection.remoteUserID)
                     .get()
                 ).data()["icecandidates"];
 
@@ -398,17 +402,17 @@ async function postReturnAnswer() {
                   newPeerConnection.userPeerConnection.signalingState
                 );
 
-                await newPeerConnection.waitRemoteOffer();
-
                 console.log("Finished waiting for remote answer");
-
-                console.log("Adding Ice candidates at time: " + Date.now);
 
                 for (let i = 0; i < Object.keys(candidates).length; i++) {
                   newPeerConnection.userPeerConnection.addIceCandidate(
                     new RTCIceCandidate(candidates[i.toString()])
                   );
                 }
+
+                console.log(
+                  "Finished adding Ice candidates at time: " + Date.now
+                );
 
                 unsubscribeIceReceiverListener();
               }
@@ -558,14 +562,12 @@ class UserConnection {
 
   async waitRemoteOffer() {
     return new Promise((resolve, reject) => {
-      this.userPeerConnection.addEventListener(
-        "signalingstatechange",
-        (state) => {
-          if (state == "have-remote-offer") {
-            resolve(true);
-          }
+      this.userPeerConnection.addEventListener("signalingstatechange", () => {
+        console.log(this.userPeerConnection.signalingState);
+        if (this.userPeerConnection.signalingState == "stable") {
+          resolve(true);
         }
-      );
+      });
     });
   }
 
