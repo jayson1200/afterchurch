@@ -24,9 +24,6 @@ let db = firebase.firestore();
 
 let audioPlayer = document.getElementById("audio-player");
 
-//Ensures the first postReturnAnswer call is ignored
-let isInInit = false;
-
 const rootRef = db.collection("audio-rooms").doc("rooms");
 
 const servers = {
@@ -115,12 +112,8 @@ function listenToOfferCandidates() {
     .collection("offer-candidates")
     .doc("metadata")
     .onSnapshot(() => {
-      if (isInInit) {
-        console.log("posting return answer Time: " + Date.now());
-
-        postReturnAnswer();
-      }
-      isInInit = true;
+      console.log("posting return answer Time: " + Date.now());
+      postReturnAnswer();
     });
 }
 
