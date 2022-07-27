@@ -226,8 +226,6 @@ async function runSignaling() {
                   .get()
               ).data()["icecandidates"];
 
-              console.log(candidates);
-
               await newPeerConnection.waitRemoteOffer();
 
               console.log("Finished waiting for remote answer");
@@ -241,7 +239,7 @@ async function runSignaling() {
               }
 
               console.log(
-                "Finished adding Ice candidates at time: " + Date.now
+                "Finished adding Ice candidates at time: " + Date.now()
               );
 
               unsubscribeIceInitiatorListener();
@@ -398,10 +396,6 @@ async function postReturnAnswer() {
                     .get()
                 ).data()["icecandidates"];
 
-                console.log(
-                  newPeerConnection.userPeerConnection.signalingState
-                );
-
                 console.log("Finished waiting for remote answer");
 
                 for (let i = 0; i < Object.keys(candidates).length; i++) {
@@ -411,7 +405,7 @@ async function postReturnAnswer() {
                 }
 
                 console.log(
-                  "Finished adding Ice candidates at time: " + Date.now
+                  "Finished adding Ice candidates at time: " + Date.now()
                 );
 
                 unsubscribeIceReceiverListener();
@@ -446,8 +440,6 @@ async function postReturnAnswer() {
 
               console.log("Set gatheringstate true at: " + Date.now());
             }
-
-            console.log(newPeerConnection.userPeerConnection.iceGatheringState);
           }
         );
 
