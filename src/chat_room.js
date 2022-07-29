@@ -22,8 +22,7 @@ window.addEventListener("beforeunload", (e) => {
   // Cancel the event
   e.preventDefault(); // If you prevent default behavior in Mozilla Firefox prompt will always be shown
   // Chrome requires returnValue to be set
-  e.returnValue =
-    "Reloading will put you last in line. Are you sure you want to do that?";
+  e.returnValue = "";
 });
 
 firebase.initializeApp(firebaseConfig);
@@ -31,6 +30,9 @@ firebase.initializeApp(firebaseConfig);
 let db = firebase.firestore();
 
 let audioPlayer = document.getElementById("audio-player");
+
+let audioContext = new AudioContext();
+let audioStreamsDest = audioContext.createMediaStreamDestination();
 
 const rootRef = db.collection("audio-rooms").doc("rooms");
 
