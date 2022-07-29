@@ -18,6 +18,14 @@ const firebaseConfig = {
   measurementId: "G-W78QCBLTSK",
 };
 
+window.addEventListener("beforeunload", (e) => {
+  // Cancel the event
+  e.preventDefault(); // If you prevent default behavior in Mozilla Firefox prompt will always be shown
+  // Chrome requires returnValue to be set
+  e.returnValue =
+    "Reloading will put you last in line. Are you sure you want to do that?";
+});
+
 firebase.initializeApp(firebaseConfig);
 
 let db = firebase.firestore();
